@@ -11,23 +11,17 @@ from bsutils.logger.bslogger import BSLogger
 
 class BSTelegramUserClient:
     client: Optional[TelegramClient]
-    
+    telegram_user_id: Optional[str]
+    logger: Optional[BSLogger]
+    channels_to_listen_from: list[str]
     app_api_id: int
     app_api_hash: str
     phone_number: str
-    
     process_messages_endpoint: str
-
     session_file_path: str
     logs_dir: str
 
-    telegram_user_id: Optional[str]
     
-    logger: Optional[BSLogger]
-    
-    channels_to_listen_from: list[str]
-
-
     def __init__(self, api_id: int, api_hash: str, phone_number: str, session_file_path: str, logs_dir: str, process_messages_endpoint: str) -> None:
         if not isinstance(api_id, int) or api_id <= 0:
             raise ValueError("API ID must be a positive integer")
@@ -70,7 +64,6 @@ class BSTelegramUserClient:
         me = await self.client.get_me()
         self.telegram_user_id = str(me.id)
         self.set_logger()
-
 
     def add_channel_to_listen(self, channel_username: str) -> None:
         if not channel_username or not isinstance(channel_username, str):
