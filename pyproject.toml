@@ -3,13 +3,12 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "bstelegram-userclient"
+name = "bstelegramuser"
 version = "0.1.0"
-description = "Cliente de Telegram para procesar mensajes de canales y enviarlos a endpoints HTTP"
-readme = "README.md"
+description = "Telegram client to process channel messages and send them to HTTP endpoints"
 requires-python = ">=3.9"
 authors = [
-    {name = "BetSheet", email = "betsheet@protonmail.com
+    {name = "BetSheet", email = "betsheet@protonmail.com"}
 ]
 keywords = ["telegram", "client", "api", "betsheet"]
 classifiers = [
@@ -32,9 +31,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/betsheet/bstelegram_userclient"
-Repository = "https://github.com/betsheet/bstelegram_userclient.git"
-Issues = "https://github.com/betsheet/bstelegram_userclient/issues"
+Homepage = "https://github.com/betsheet/bstelegramuser
+Repository = "https://github.com/betsheet/bstelegramuser
+Issues = "https://github.com/betsheet/bstelegramuser/issues"
 
 [project.optional-dependencies]
 dev = [
