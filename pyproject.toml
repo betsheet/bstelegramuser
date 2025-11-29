@@ -31,8 +31,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/betsheet/bstelegramuser
-Repository = "https://github.com/betsheet/bstelegramuser
+Homepage = "https://github.com/betsheet/bstelegramuser"
+Repository = "https://github.com/betsheet/bstelegramuser"
 Issues = "https://github.com/betsheet/bstelegramuser/issues"
 
 [project.optional-dependencies]
