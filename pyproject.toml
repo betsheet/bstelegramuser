@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bstelegram-userclient"
+version = "0.1.0"
+description = "Cliente de Telegram para procesar mensajes de canales y enviarlos a endpoints HTTP"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+    {name = "BetSheet", email = "betsheet@protonmail.com
+]
+keywords = ["telegram", "client", "api", "betsheet"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Communications :: Chat",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "requests>=2.25.0",
+    "telethon>=1.24.0",
+    "bsutils @ git+https://github.com/betsheet/bsutils.git",
+]
+
+[project.urls]
+Homepage = "https://github.com/betsheet/bstelegram_userclient"
+Repository = "https://github.com/betsheet/bstelegram_userclient.git"
+Issues = "https://github.com/betsheet/bstelegram_userclient/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=22.0.0",
+    "flake8>=4.0.0",
+    "mypy>=1.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["bstelegram_userclient*"]
+
+[tool.black]
+line-length = 88
+target-version = ['py39']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  __pycache__
+)/
+'''
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true

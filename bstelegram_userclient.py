@@ -2,16 +2,15 @@ import os
 from datetime import datetime
 from typing import Optional, Callable
 import requests.exceptions
-from dotenv import load_dotenv
 from requests import Response
 import requests
 from telethon import TelegramClient, events
 from bsutils.apimodels.pick_message import BSTelegramPickMessage
 from bsutils.logger.bslogger import BSLogger
-import asyncio
+
 
 class BSTelegramUserClient:
-    client: TelegramClient
+    client: Optional[TelegramClient]
     
     app_api_id: int
     app_api_hash: str
@@ -22,19 +21,23 @@ class BSTelegramUserClient:
     session_file_path: str
     logs_dir: str
 
-    telegram_user_id: str
+    telegram_user_id: Optional[str]
     
-    logger: BSLogger
+    logger: Optional[BSLogger]
     
     channels_to_listen_from: list[str]
 
 
     def __init__(self, api_id: int, api_hash: str, phone_number: str, session_file_path: str, logs_dir: str, process_messages_endpoint: str) -> None:
-        if not api_id or not api_hash or not phone_number:
-            raise ValueError("API credentials and phone number are required")
-        if not process_messages_endpoint:
-            raise ValueError("Process messages endpoint is required")
-         
+        if not isinstance(api_id, int) or api_id <= 0:
+            raise ValueError("API ID must be a positive integer")
+        if not api_hash or not isinstance(api_hash, str):
+            raise ValueError("API hash must be a non-empty string")
+        if not phone_number or not isinstance(phone_number, str):
+            raise ValueError("Phone number must be a non-empty string")
+        if not process_messages_endpoint or not process_messages_endpoint.startswith(('http://', 'https://')):
+            raise ValueError("Process messages endpoint must be a valid URL")
+      
         self.app_api_hash = api_hash
         self.app_api_id = api_id
         self.phone_number = phone_number
@@ -42,14 +45,18 @@ class BSTelegramUserClient:
         self.logs_dir = logs_dir
         self.process_messages_endpoint = process_messages_endpoint
 
+        self._setup_client()
+
+        self.telegram_user_id = None
+        self.logger = None
+        self.channels_to_listen_from = []
 
     def set_logger(self) -> None:
         os.makedirs(self.logs_dir, exist_ok=True)
-        #self.logger = BSLogger(os.path.join(logs_dir, f'{self.telegram_user_id}_{str(datetime.now().strftime("%d%m%Y%H%M%S"))}.log'))
-        self.logger = BSLogger(os.path.join(self.logs_dir, f'{str(datetime.now().strftime("%d%m%Y%H%M%S"))}.log'))
+        self.logger = BSLogger(os.path.join(self.logs_dir, f'{self.telegram_user_id}_{str(datetime.now().strftime("%d%m%Y%H%M%S"))}.log'))
 
 
-    def set_client(self) -> None:
+    def _setup_client(self) -> None:
         session_dir = os.path.dirname(self.session_file_path)
         if session_dir:  # Solo si hay un directorio (no es solo nombre de archivo)
             os.makedirs(session_dir, exist_ok=True)
@@ -66,15 +73,28 @@ class BSTelegramUserClient:
 
 
     def add_channel_to_listen(self, channel_username: str) -> None:
-        if not hasattr(self, 'channels_to_listen_from'):
-            self.channels_to_listen_from = []
-        self.channels_to_listen_from.append(channel_username)
+        if not channel_username or not isinstance(channel_username, str):
+            raise ValueError("Channel username must be a non-empty string")
+        
+        normalized_channel = channel_username.strip()
+        if normalized_channel not in self.channels_to_listen_from:
+            self.channels_to_listen_from.append(normalized_channel)
+        else:
+            if self.logger:
+                self.logger.warning(f"Channel '{normalized_channel}' already added")
 
+    def remove_channel_to_listen(self, channel_username: str) -> bool:
+        if channel_username in self.channels_to_listen_from:
+            self.channels_to_listen_from.remove(channel_username)
+            return True
+        return False
+
+    def get_listening_channels(self) -> list[str]:
+        return self.channels_to_listen_from.copy()
 
     async def start_listening_channels(self):
         if not self.channels_to_listen_from:
-            self.logger.warning("No channels configured to listen from")
-            return
+            raise ValueError("No channels configured to listen from. Use add_channel_to_listen() first.")
 
         await self._start()
         self.logger.info(f"User '{self.telegram_user_id}' started listening.")
@@ -82,7 +102,6 @@ class BSTelegramUserClient:
             self._add_listener(c, self._process_message_from_channel)
             self.logger.info(f"Listening messages from '{c}'")
         await self.client.run_until_disconnected()
-
 
     def __enter__(self):
         return self
@@ -95,13 +114,7 @@ class BSTelegramUserClient:
         if self.client:
             await self.client.disconnect()
 
-
     def _add_listener(self, listen_from: str, on_message: Optional[Callable[[str, str], None]] = print) -> None:
-        """
-        :param listen_from: canal/contacto/bot cuyos mensajes queremos escuchar
-        :param on_message: función que se ejecuta para cada nuevo mensaje. Recibe como argumento el mensaje como string
-        :return:
-        """
         @self.client.on(events.NewMessage(from_users=listen_from.lstrip("@")))
         async def _handler(event):
             on_message(event.text, event.original_update.message.id)
@@ -113,7 +126,8 @@ class BSTelegramUserClient:
         try:
             response: Response = requests.post(
                 url=self.process_messages_endpoint,
-                json=payload_json
+                json=payload_json, 
+                timeout=30
             )
 
             if response.status_code == 200:
@@ -122,8 +136,8 @@ class BSTelegramUserClient:
                 self.logger.info(f"Message with id '{telegram_message_id}' successfully processed.")
             
             else:
-                    self.logger.error(f"Failed to process message '{telegram_message_id}'. "
-                                    f"Status: {response.status_code}, Response: {response.text}")
+                self.logger.error(f"Failed to process message '{telegram_message_id}'. "
+                                f"Status: {response.status_code}, Response: {response.text}")
         
         except requests.exceptions.Timeout:
             self.logger.error(f"Timeout processing message '{telegram_message_id}'")
