@@ -19,10 +19,9 @@ class BSTelegramUserClient:
     phone_number: str
     process_messages_endpoint: str
     session_file_path: str
-    logs_dir: str
-
+    logger: Optional[BSLogger]
     
-    def __init__(self, api_id: int, api_hash: str, phone_number: str, session_file_path: str, logs_dir: str, process_messages_endpoint: str) -> None:
+    def __init__(self, api_id: int, api_hash: str, phone_number: str, session_file_path: str, logger: BSLogger, process_messages_endpoint: str) -> None:
         if not isinstance(api_id, int) or api_id <= 0:
             raise ValueError("API ID must be a positive integer")
         if not api_hash or not isinstance(api_hash, str):
@@ -36,19 +35,16 @@ class BSTelegramUserClient:
         self.app_api_id = api_id
         self.phone_number = phone_number
         self.session_file_path = session_file_path
-        self.logs_dir = logs_dir
+
         self.process_messages_endpoint = process_messages_endpoint
 
         self._setup_client()
 
         self.telegram_user_id = None
-        self.logger = None
+        self.logger = logger
         self.channels_to_listen_from = []
 
-    def set_logger(self) -> None:
-        os.makedirs(self.logs_dir, exist_ok=True)
-        self.logger = BSLogger(os.path.join(self.logs_dir, f'{self.telegram_user_id}_{str(datetime.now().strftime("%d%m%Y%H%M%S"))}.log'))
-
+ 
 
     def _setup_client(self) -> None:
         session_dir = os.path.dirname(self.session_file_path)
@@ -63,7 +59,6 @@ class BSTelegramUserClient:
         await self.client.start(phone=self.phone_number)
         me = await self.client.get_me()
         self.telegram_user_id = str(me.id)
-        self.set_logger()
 
     def add_channel_to_listen(self, channel_username: str) -> None:
         if not channel_username or not isinstance(channel_username, str):
