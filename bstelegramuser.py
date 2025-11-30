@@ -1,5 +1,4 @@
 import os
-from datetime import datetime
 from typing import Optional, Callable
 import requests.exceptions
 from requests import Response
@@ -137,4 +136,6 @@ class BSTelegramUserClient:
             self.logger.error(f"Unexpected error processing message '{telegram_message_id}': {str(e)}")
 
 
-             
+    def verify_code(self, code: str) -> None:
+        self.client.sign_in(self.phone_number, code)
+
