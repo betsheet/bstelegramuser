@@ -20,7 +20,7 @@ Requisitos
 
 Instalación
 ----------
-Instala el paquete en modo editable (útil durante desarrollo):
+Instala el paquete en modo editable:
 
 ```sh
 pip install -e .
@@ -28,28 +28,81 @@ pip install -e .
 
 Uso
 ---
-Ejemplo mínimo de uso (reemplaza los placeholders por tus valores reales). Este ejemplo muestra el flujo asincrónico que inicia el cliente, añade un canal y empieza a escuchar mensajes.
 
-```py
+### Flujo no interactivo (recomendado para aplicaciones web)
+
+Este flujo permite controlar cada paso de la autenticación y es compatible con aplicaciones web:
+
+```python
 import asyncio
 from bstelegramuser import BSTelegramUserClient
+from bsutils.logger.bslogger import BSLogger
+
+
+async def main():
+    # 1. Crear instancia del cliente
+    telegram_client = BSTelegramUserClient(
+        api_id=123456,  # Replace with your actual API ID
+        api_hash="YOUR_API_HASH",  # Replace with your actual API hash
+        phone_number="+1234567890",  # Replace with your phone number
+        session_file_path="session.session",
+        logger=BSLogger("app.log"),  # Replace with your logger instance
+        process_messages_endpoint="https://your-api.com/process-message"
+    )
+
+    # 2. Conectar al servidor de Telegram
+    await telegram_client.connect_client()
+
+    # 3. Verificar si ya está autenticado
+    if not await telegram_client.is_authenticated():
+        # 3a. Solicitar código de verificación
+        await telegram_client.request_verification_code()
+        
+        # 3b. Obtener código del usuario (desde formulario web, input, etc.)
+        code = input("Enter verification code: ")
+        
+        # 3c. Verificar el código
+        await telegram_client.verify_code(code)
+
+    # 4. Añadir canales a escuchar
+    telegram_client.add_channel_to_listen("channel1")
+    telegram_client.add_channel_to_listen("channel2")
+
+    # 5. Iniciar escucha
+    await telegram_client.start_listening_channels()
+
+
+asyncio.run(main())
+```
+
+### Flujo interactivo (para scripts de terminal)
+
+Para scripts que se ejecutan en terminal, puedes usar el flujo interactivo simplificado:
+
+```python
+import asyncio
+from bstelegramuser import BSTelegramUserClient
+from bsutils.logger.bslogger import BSLogger
 
 
 async def main():
     telegram_client = BSTelegramUserClient(
-        api_id=123456,  # Reemplaza por tu API ID (entero)
-        api_hash="YOUR_API_HASH",  # Reemplaza por tu API hash
-        phone_number="+YOUR_PHONE_NUMBER",  # Reemplaza por tu número con prefijo internacional
-        session_file_path="path/to/session.session",  # Ruta al archivo de sesión
-        logger=None,  # Reemplaza con una instancia válida de logger (por ejemplo, BSLogger si la tienes)
-        process_messages_endpoint="http://localhost/process-pick-message"
+        api_id=123456,  # Replace with your actual API ID
+        api_hash="YOUR_API_HASH",  # Replace with your actual API hash
+        phone_number="+1234567890",  # Replace with your phone number
+        session_file_path="session.session",
+        logger=BSLogger("app.log"),
+        process_messages_endpoint="https://your-api.com/process-message"
     )
 
-    telegram_client.add_channel_to_listen("test")
+    telegram_client.add_channel_to_listen("channel1")
     await telegram_client.interactive_start_listening_channels()
 
 
 asyncio.run(main())
+```
+
+**Nota:** El flujo interactivo usa `input()` para solicitar el código de verificación, por lo que NO es compatible con aplicaciones web.asyncio.run(main())
 ```
 
 Notas de seguridad
