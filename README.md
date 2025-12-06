@@ -34,6 +34,7 @@ Ejemplo mínimo de uso (reemplaza los placeholders por tus valores reales). Este
 import asyncio
 from bstelegramuser import BSTelegramUserClient
 
+
 async def main():
     telegram_client = BSTelegramUserClient(
         api_id=123456,  # Reemplaza por tu API ID (entero)
@@ -45,7 +46,8 @@ async def main():
     )
 
     telegram_client.add_channel_to_listen("test")
-    await telegram_client.start_listening_channels()
+    await telegram_client.interactive_start_listening_channels()
+
 
 asyncio.run(main())
 ```

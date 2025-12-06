@@ -9,15 +9,19 @@ from bsutils.logger.bslogger import BSLogger
 
 
 class BSTelegramUserClient:
+    # Telegram data
     client: Optional[TelegramClient]
-    telegram_user_id: Optional[str]
-    logger: Optional[BSLogger]
-    channels_to_listen_from: list[str]
     app_api_id: int
     app_api_hash: str
+    telegram_user_id: Optional[str]
     phone_number: str
-    process_messages_endpoint: str
     session_file_path: str
+
+    # Messages
+    channels_to_listen_from: list[str]
+    process_messages_endpoint: str
+
+    # Logger
     logger: Optional[BSLogger]
     
     def __init__(self, api_id: int, api_hash: str, phone_number: str, session_file_path: str, logger: BSLogger, process_messages_endpoint: str) -> None:
@@ -43,7 +47,6 @@ class BSTelegramUserClient:
         self.logger = logger
         self.channels_to_listen_from = []
 
- 
 
     def _setup_client(self) -> None:
         session_dir = os.path.dirname(self.session_file_path)
@@ -55,6 +58,7 @@ class BSTelegramUserClient:
 
 
     async def _start(self) -> None:
+        # !! la llamada a client.start() requiere de la interacción del usuario mediante input() (no vale para app web)
         await self.client.start(phone=self.phone_number)
         me = await self.client.get_me()
         self.telegram_user_id = str(me.id)
@@ -79,7 +83,7 @@ class BSTelegramUserClient:
     def get_listening_channels(self) -> list[str]:
         return self.channels_to_listen_from.copy()
 
-    async def start_listening_channels(self):
+    async def interactive_start_listening_channels(self):
         if not self.channels_to_listen_from:
             raise ValueError("No channels configured to listen from. Use add_channel_to_listen() first.")
 
