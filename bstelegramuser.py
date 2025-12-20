@@ -177,8 +177,6 @@ class BSTelegramUserClient:
             )
 
             if response.status_code == HTTPStatus.OK:
-                # TODO: mostrar algo más de info en el logger (id_ del pick generado, o lo que sea. Habría que devolverlo
-                #  en la response que crea la API)
                 self.logger.info(f"Message with id '{telegram_message_id}' successfully processed.")
 
             else:
