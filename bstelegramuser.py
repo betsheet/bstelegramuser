@@ -163,7 +163,36 @@ class BSTelegramUserClient:
     def _add_listener(self, listen_from: str, on_message: Optional[Callable[[str, str], None]] = print) -> None:
         @self.client.on(events.NewMessage(from_users=listen_from.lstrip("@")))
         async def _handler(event):
-            on_message(event.text, event.original_update.message.id)
+            try:
+                # Intentar obtener el texto del mensaje
+                message_text = ""
+                if hasattr(event, 'text') and event.text:
+                    message_text = event.text
+                elif hasattr(event, 'message') and hasattr(event.message, 'message'):
+                    message_text = event.message.message
+
+                # Intentar obtener el ID del mensaje de múltiples formas
+                message_id = None
+
+                # Opción 1: Directamente desde event.message.id
+                if hasattr(event, 'message') and hasattr(event.message, 'id'):
+                    message_id = str(event.message.id)
+                # Opción 2: Desde event.original_update.message.id (si message es objeto)
+                elif (hasattr(event, 'original_update') and
+                      hasattr(event.original_update, 'message') and
+                      not isinstance(event.original_update.message, str) and
+                      hasattr(event.original_update.message, 'id')):
+                    message_id = str(event.original_update.message.id)
+                # Opción 3: Desde event.id como fallback
+                elif hasattr(event, 'id'):
+                    message_id = str(event.id)
+                else:
+                    message_id = "unknown"
+
+                on_message(message_text, message_id)
+
+            except Exception as e:
+                self.logger.error(f"Error processing message from '{listen_from}': {str(e)}")
 
     def _process_message_from_channel(self, message_html: str, telegram_message_id: str):
         payload: BSTelegramPickMessage = BSTelegramPickMessage(from_user_id=self.telegram_user_id, content=message_html)
