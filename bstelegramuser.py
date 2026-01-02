@@ -195,7 +195,7 @@ class BSTelegramUserClient:
                 self.logger.error(f"Error processing message from '{listen_from}': {str(e)}")
 
     def _process_message_from_channel(self, message_html: str, telegram_message_id: str):
-        payload: BSTelegramPickMessage = BSTelegramPickMessage(from_user_id=self.telegram_user_id, content=message_html)
+        payload: BSTelegramPickMessage = BSTelegramPickMessage(from_user_id=self.telegram_user_id, from_telegram_chat_id="", content=message_html)
         payload_json: dict = payload.model_dump(by_alias=True, mode='json')
 
         try:
