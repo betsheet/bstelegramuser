@@ -1,6 +1,7 @@
 import os
 from http import HTTPStatus
 from typing import Optional, Callable
+from datetime import datetime, timezone
 import requests.exceptions
 from requests import Response
 import requests
@@ -195,7 +196,15 @@ class BSTelegramUserClient:
                 self.logger.error(f"Error processing message from '{listen_from}': {str(e)}")
 
     def _process_message_from_channel(self, message_html: str, telegram_message_id: str):
-        payload: BSTelegramPickMessage = BSTelegramPickMessage(from_user_id=self.telegram_user_id, from_telegram_chat_id="", content=message_html)
+        # Obtener timestamp actual en formato dd/mm/yyyy hh:mm:ss
+        timestamp = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M:%S")
+
+        payload: BSTelegramPickMessage = BSTelegramPickMessage(
+            from_user_id=self.telegram_user_id,
+            from_telegram_chat_id="",
+            content=message_html,
+            timestamp=timestamp
+        )
         payload_json: dict = payload.model_dump(by_alias=True, mode='json')
 
         try:
