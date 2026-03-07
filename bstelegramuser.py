@@ -6,10 +6,10 @@ import requests.exceptions
 from requests import Response
 import requests
 from telethon import TelegramClient, events
-from bsutils.apimodels.pick_message import BSTelegramPickMessage
 from bsutils.logger.bslogger import BSLogger
+from bsutils.apimodels.pick_message import BSTelegramPickMessage
 
-# TODO: recopilar todas las execptions que tenemos.
+# TODO: recopilar todas las exceptions que tenemos.
 class BSTelegramUserClient:
     # Telegram data
     client: Optional[TelegramClient]
