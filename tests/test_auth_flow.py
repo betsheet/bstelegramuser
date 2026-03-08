@@ -178,6 +178,72 @@ class TestVerifyCode:
             await client_instance.verify_code("12345")
 
 
+class TestGetUserChannels:
+    def _make_channel_entity(self, name, entity_id, username=None, megagroup=False):
+        entity = MagicMock()
+        type(entity).__name__ = "Channel"
+        entity.id = entity_id
+        entity.username = username
+        entity.megagroup = megagroup
+        dialog = MagicMock()
+        dialog.entity = entity
+        dialog.name = name
+        return dialog
+
+    def _make_non_channel_entity(self, name):
+        entity = MagicMock()
+        type(entity).__name__ = "User"
+        dialog = MagicMock()
+        dialog.entity = entity
+        dialog.name = name
+        return dialog
+
+    @pytest.mark.asyncio
+    async def test_returns_channels_and_supergroups(self, client_instance):
+        set_authorized(client_instance, True)
+        dialogs = [
+            self._make_channel_entity("Canal Noticias", 1001, username="noticias", megagroup=False),
+            self._make_channel_entity("SuperGrupo Dev", 1002, username=None, megagroup=True),
+            self._make_non_channel_entity("Amigo"),
+        ]
+
+        async def fake_iter_dialogs():
+            for d in dialogs:
+                yield d
+
+        client_instance.client.iter_dialogs = fake_iter_dialogs
+
+        result = await client_instance.get_user_channels()
+
+        assert len(result) == 2
+        assert result[0] == {"id": 1001, "name": "Canal Noticias", "username": "noticias", "type": "channel"}
+        assert result[1] == {"id": 1002, "name": "SuperGrupo Dev", "username": None, "type": "supergroup"}
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_list_when_no_channels(self, client_instance):
+        set_authorized(client_instance, True)
+
+        async def fake_iter_dialogs():
+            return
+            yield  # make it an async generator
+
+        client_instance.client.iter_dialogs = fake_iter_dialogs
+        result = await client_instance.get_user_channels()
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_raises_if_not_authenticated(self, client_instance):
+        set_authorized(client_instance, False)
+        with pytest.raises(RuntimeError, match="not authenticated"):
+            await client_instance.get_user_channels()
+
+    @pytest.mark.asyncio
+    async def test_raises_if_not_connected(self, client_instance):
+        set_connected(client_instance, False)
+        with pytest.raises(RuntimeError, match="not connected"):
+            await client_instance.get_user_channels()
+
+
 class TestFullAuthFlow:
     @pytest.mark.asyncio
     async def test_complete_auth_flow(self, client_instance):

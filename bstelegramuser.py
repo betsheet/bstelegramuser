@@ -198,6 +198,45 @@ class BSTelegramUserClient:
     def get_listening_channels(self) -> list[str]:
         return self.channels_to_listen_from.copy()
 
+    # Channel discovery
+    async def get_user_channels(self) -> list[dict]:
+        """
+        Devuelve la lista de canales y supergrupos a los que pertenece el usuario autenticado.
+
+        Returns:
+            Lista de dicts con las claves:
+              - 'id'       (int)  : identificador interno del canal
+              - 'name'     (str)  : nombre del canal
+              - 'username' (str | None): @username público, o None si es privado
+              - 'type'     (str)  : 'channel' o 'supergroup'
+
+        Raises:
+            RuntimeError: si el cliente no está conectado o autenticado.
+        """
+        self._ensure_client_ready()
+
+        if not await self.is_authenticated():
+            raise RuntimeError("Cannot get channels: client not authenticated")
+
+        channels = []
+        async for dialog in self.client.iter_dialogs():
+            entity = dialog.entity
+            entity_type = type(entity).__name__
+
+            # Channel: canales de difusión y supergrupos
+            if entity_type == "Channel":
+                kind = "supergroup" if getattr(entity, "megagroup", False) else "channel"
+                # TODO: entidad Channel
+                channels.append({
+                    "id": entity.id,
+                    "name": dialog.name,
+                    "username": getattr(entity, "username", None),
+                    "type": kind,
+                })
+
+        self.logger.info(f"Found {len(channels)} channels for the authenticated user")
+        return channels
+
     def _add_listener(self, listen_from: str, on_message: Optional[Callable[[str, str], None]] = print) -> None:
         @self.client.on(events.NewMessage(from_users=listen_from.lstrip("@")))
         async def _handler(event):
