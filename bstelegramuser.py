@@ -6,6 +6,7 @@ import requests.exceptions
 from requests import Response
 import requests
 from telethon import TelegramClient, events
+from telethon.tl.functions.auth import ResendCodeRequest
 from bsutils.logger.bslogger import BSLogger
 from bsutils.apimodels.pick_message import BSTelegramPickMessage
 
@@ -22,6 +23,9 @@ class BSTelegramUserClient:
     # Messages
     channels_to_listen_from: list[str]
     process_messages_endpoint: str
+
+    # Auth state
+    _phone_code_hash: Optional[str]
 
     # Logger
     logger: Optional[BSLogger]
@@ -40,6 +44,7 @@ class BSTelegramUserClient:
         self.telegram_user_id = None
         self.logger = logger
         self.channels_to_listen_from = []
+        self._phone_code_hash = None
 
     # Validation and setup
     @staticmethod
@@ -76,15 +81,47 @@ class BSTelegramUserClient:
             await self.client.connect()
             self.logger.info("Client successfully connected to Telegram")
 
-    async def request_verification_code(self) -> None:
+    async def request_verification_code(self, force_sms: bool = False) -> None:
+        """
+        Solicita el envío del código de verificación.
+
+        Args:
+            force_sms: Si es True, intenta forzar el envío por SMS en lugar de
+                       la app de Telegram. Nota: este comportamiento depende de
+                       Telegram y puede no estar siempre disponible.
+        """
         self._ensure_client_ready()
 
         if await self.is_authenticated():
             self.logger.info("User is already authenticated; no need to request code")
             return
 
-        await self.client.send_code_request(self.phone_number)
-        self.logger.info(f"Verification code sent to {self.phone_number}")
+        sent = await self.client.send_code_request(self.phone_number, force_sms=force_sms)
+        self._phone_code_hash = sent.phone_code_hash
+        method = "SMS" if force_sms else "Telegram app"
+        self.logger.info(f"Verification code sent to {self.phone_number} via {method}")
+
+    async def resend_verification_code_via_sms(self) -> None:
+        """
+        Reenvía el código de verificación por SMS.
+
+        Telegram envía el primer código por la app; al llamar a este método
+        se solicita el reenvío por el siguiente medio disponible (normalmente SMS).
+        Debes haber llamado primero a request_verification_code().
+        """
+        self._ensure_client_ready()
+
+        if not self._phone_code_hash:
+            raise RuntimeError(
+                "No phone_code_hash available. Call request_verification_code() first."
+            )
+
+        sent = await self.client(ResendCodeRequest(
+            phone_number=self.phone_number,
+            phone_code_hash=self._phone_code_hash
+        ))
+        self._phone_code_hash = sent.phone_code_hash
+        self.logger.info(f"Verification code resent to {self.phone_number} via SMS")
 
     async def verify_code(self, code: str) -> None:
         self._ensure_client_ready()

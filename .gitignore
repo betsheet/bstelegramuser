@@ -26,6 +26,7 @@ logs/
 
 # Environment variables
 .env
+.env.test
 
 # Test and coverage outputs
 .coverage
