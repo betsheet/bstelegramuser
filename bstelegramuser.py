@@ -199,6 +199,34 @@ class BSTelegramUserClient:
         return self.channels_to_listen_from.copy()
 
     # Channel discovery
+    async def get_channel_username_by_name(self, channel_name: str) -> Optional[str]:
+        """
+        Busca un canal por nombre exacto y devuelve su @username.
+
+        Args:
+            channel_name: Nombre del canal tal como aparece en Telegram.
+
+        Returns:
+            El @username del canal (sin '@'), o None si el canal es privado
+            y no tiene username público.
+
+        Raises:
+            ValueError: Si channel_name está vacío o no es string.
+            RuntimeError: Si el cliente no está conectado o autenticado.
+            LookupError: Si no se encuentra ningún canal con ese nombre.
+        """
+        if not channel_name or not isinstance(channel_name, str):
+            raise ValueError("'channel_name' must be a non-empty string")
+
+        channels = await self.get_user_channels()
+        for channel in channels:
+            if channel["name"] == channel_name:
+                self.logger.info(f"Channel '{channel_name}' found with username: {channel['username']}")
+                return channel["username"]
+
+        raise LookupError(f"No channel found with name '{channel_name}'")
+
+
     async def get_user_channels(self) -> list[dict]:
         """
         Devuelve la lista de canales y supergrupos a los que pertenece el usuario autenticado.

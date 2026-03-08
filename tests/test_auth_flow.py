@@ -244,6 +244,55 @@ class TestGetUserChannels:
             await client_instance.get_user_channels()
 
 
+class TestGetChannelUsernameByName:
+    def _make_channels(self):
+        return [
+            {"id": 1001, "name": "Canal Noticias", "username": "noticias", "type": "channel"},
+            {"id": 1002, "name": "SuperGrupo Dev",  "username": None,        "type": "supergroup"},
+            {"id": 1003, "name": "Canal Privado",   "username": None,        "type": "channel"},
+        ]
+
+    @pytest.mark.asyncio
+    async def test_returns_username_for_known_channel(self, client_instance):
+        client_instance.get_user_channels = AsyncMock(return_value=self._make_channels())
+        result = await client_instance.get_channel_username_by_name("Canal Noticias")
+        assert result == "noticias"
+
+    @pytest.mark.asyncio
+    async def test_returns_none_for_private_channel(self, client_instance):
+        client_instance.get_user_channels = AsyncMock(return_value=self._make_channels())
+        result = await client_instance.get_channel_username_by_name("Canal Privado")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_raises_lookup_error_when_not_found(self, client_instance):
+        client_instance.get_user_channels = AsyncMock(return_value=self._make_channels())
+        with pytest.raises(LookupError, match="No channel found with name 'Inexistente'"):
+            await client_instance.get_channel_username_by_name("Inexistente")
+
+    @pytest.mark.asyncio
+    async def test_raises_value_error_on_empty_name(self, client_instance):
+        with pytest.raises(ValueError, match="channel_name"):
+            await client_instance.get_channel_username_by_name("")
+
+    @pytest.mark.asyncio
+    async def test_raises_value_error_on_none_name(self, client_instance):
+        with pytest.raises((ValueError, TypeError)):
+            await client_instance.get_channel_username_by_name(None)
+
+    @pytest.mark.asyncio
+    async def test_raises_if_not_connected(self, client_instance):
+        set_connected(client_instance, False)
+        with pytest.raises(RuntimeError, match="not connected"):
+            await client_instance.get_channel_username_by_name("Canal Noticias")
+
+    @pytest.mark.asyncio
+    async def test_raises_if_not_authenticated(self, client_instance):
+        set_authorized(client_instance, False)
+        with pytest.raises(RuntimeError, match="not authenticated"):
+            await client_instance.get_channel_username_by_name("Canal Noticias")
+
+
 class TestFullAuthFlow:
     @pytest.mark.asyncio
     async def test_complete_auth_flow(self, client_instance):
