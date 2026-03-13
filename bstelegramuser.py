@@ -199,6 +199,58 @@ class BSTelegramUserClient:
         return self.channels_to_listen_from.copy()
 
     # Channel discovery
+    async def get_last_n_messages(self, chat: str, n: int) -> list:
+        """
+        Devuelve los «n» últimos mensajes de un canal o chat.
+
+        El parámetro «chat» puede ser:
+          - Un @username (con o sin '@'), p. ej. ``"@micanal"`` o ``"micanal"``.
+          - El nombre completo del canal tal como aparece en Telegram,
+            p. ej. ``"Mi Canal Privado"``. En ese caso se resuelve
+            automáticamente el username llamando a get_channel_username_by_name().
+
+        Args:
+            chat: @username o nombre completo del canal/chat.
+            n:    Número de mensajes a recuperar (debe ser un entero positivo).
+
+        Returns:
+            Lista de objetos ``telethon.tl.types.Message`` (la entidad completa),
+            ordenados del más reciente al más antiguo.
+
+        Raises:
+            ValueError:  Si «chat» está vacío, no es string, o «n» no es un
+                         entero positivo.
+            RuntimeError: Si el cliente no está conectado o autenticado.
+            LookupError: Si se proporciona un nombre completo y no se encuentra
+                         ningún canal con ese nombre.
+        """
+        if not chat or not isinstance(chat, str):
+            raise ValueError("'chat' must be a non-empty string")
+        if not isinstance(n, int) or n <= 0:
+            raise ValueError("'n' must be a positive integer")
+
+        self._ensure_client_ready()
+        if not await self.is_authenticated():
+            raise RuntimeError("Cannot get messages: client not authenticated")
+
+        # Detectar si es un username (empieza con '@') o un nombre completo.
+        # Si empieza con '@' → username directo.
+        # Si no, intentamos resolverlo como nombre completo primero;
+        # si falla la búsqueda, asumimos que ya es un username sin '@'.
+        if chat.startswith("@"):
+            resolved = chat
+        else:
+            try:
+                username = await self.get_channel_username_by_name(chat)
+                resolved = f"@{username}" if username else chat
+            except LookupError:
+                # No encontrado como nombre completo → tratarlo como username
+                resolved = chat
+
+        messages = await self.client.get_messages(resolved, limit=n)
+        self.logger.info(f"Retrieved {len(messages)} message(s) from '{resolved}'")
+        return list(messages)
+
     async def get_channel_username_by_name(self, channel_name: str) -> Optional[str]:
         """
         Busca un canal por nombre exacto y devuelve su @username.

@@ -3,12 +3,14 @@
 # run_tests.sh — Ejecuta los tests del proyecto bstelegramuser
 #
 # Uso:
-#   zsh run_tests.sh              → solo tests unitarios (sin credenciales)
-#   zsh run_tests.sh --integration → todos los tests de integración con Telegram
-#   zsh run_tests.sh --sms-only   → solo el test de envío de código por SMS
-#   zsh run_tests.sh --all         → unitarios + integración
+#   zsh run_tests.sh                    → solo tests unitarios (sin credenciales)
+#   zsh run_tests.sh --integration      → tests de autenticación con Telegram
+#   zsh run_tests.sh --sms-only         → solo el test de envío de código por SMS
+#   zsh run_tests.sh --discovery        → tests de get_user_channels y get_channel_username_by_name
+#   zsh run_tests.sh --all              → unitarios + integración + discovery
 #   zsh run_tests.sh --phone=+34600000000 --integration
-#   zsh run_tests.sh --phone=+34600000000 --sms-only
+#   zsh run_tests.sh --phone=+34600000000 --discovery
+#   zsh run_tests.sh --phone=+34600000000 --channel-name="Mi Canal" --discovery
 # =============================================================================
 
 set -e
@@ -19,6 +21,7 @@ EXTRA_ARGS=()
 RUN_INTEGRATION=false
 RUN_ALL=false
 RUN_SMS_ONLY=false
+RUN_DISCOVERY=false
 
 # --- Parseo de argumentos ---
 for arg in "$@"; do
@@ -32,15 +35,21 @@ for arg in "$@"; do
     --sms-only)
       RUN_SMS_ONLY=true
       ;;
+    --discovery)
+      RUN_DISCOVERY=true
+      ;;
     --phone=*)
       EXTRA_ARGS+=("$arg")
       ;;
     --sms)
       EXTRA_ARGS+=("$arg")
       ;;
+    --channel-name=*)
+      EXTRA_ARGS+=("$arg")
+      ;;
     *)
       echo "⚠️  Argumento desconocido: $arg"
-      echo "    Uso: $0 [--integration] [--sms-only] [--all] [--phone=+XXXXXXXXXXX] [--sms]"
+      echo "    Uso: $0 [--integration] [--sms-only] [--discovery] [--all] [--phone=+XXXXXXXXXXX] [--sms] [--channel-name=\"Nombre\"]"
       exit 1
       ;;
   esac
@@ -88,15 +97,29 @@ run_sms_test() {
   echo "✅ Test SMS completado."
 }
 
+# --- Tests de discovery de canales ---
+run_discovery_tests() {
+  echo "▶️  Ejecutando tests de discovery de canales (get_user_channels / get_channel_username_by_name)..."
+  echo "   (Se necesita conexión a internet y credenciales de Telegram)"
+  echo ""
+  "$VENV" -m pytest tests/test_channel_discovery_integration.py -v -s -m integration "${EXTRA_ARGS[@]}"
+  echo ""
+  echo "✅ Tests de discovery completados."
+}
+
 # --- Lógica de ejecución ---
 if $RUN_ALL; then
   run_unit_tests
   echo ""
   run_integration_test
+  echo ""
+  run_discovery_tests
 elif $RUN_SMS_ONLY; then
   run_sms_test
 elif $RUN_INTEGRATION; then
   run_integration_test
+elif $RUN_DISCOVERY; then
+  run_discovery_tests
 else
   run_unit_tests
 fi
