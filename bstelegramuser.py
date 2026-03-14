@@ -3,13 +3,13 @@ from http import HTTPStatus
 from typing import Optional, Callable
 from datetime import datetime, timezone
 import requests.exceptions
+from bsutils.telegram.util import TelegramDialogType
 from requests import Response
 import requests
 from telethon import TelegramClient, events
 from telethon.tl.functions.auth import ResendCodeRequest
 from bsutils.logger.bslogger import BSLogger
 from bsutils.apimodels.pick_message import BSTelegramPickMessage
-from util.util import ChannelType
 
 # TODO: recopilar todas las exceptions que tenemos.
 class BSTelegramUserClient:
@@ -252,7 +252,7 @@ class BSTelegramUserClient:
         self.logger.info(f"Retrieved {len(messages)} message(s) from '{resolved}'")
         return list(messages)
 
-    async def get_dialog_username_by_name(self, channel_name: str, entity_types: Optional[list[ChannelType]] = None) -> Optional[str]:
+    async def get_dialog_username_by_name(self, channel_name: str, entity_types: Optional[list[TelegramDialogType]] = None) -> Optional[str]:
         """
         Busca un diálogo por nombre exacto y devuelve su @username.
 
@@ -272,7 +272,7 @@ class BSTelegramUserClient:
         if not channel_name or not isinstance(channel_name, str):
             raise ValueError("'channel_name' must be a non-empty string")
 
-        types = entity_types if entity_types is not None else list(ChannelType)
+        types = entity_types if entity_types is not None else list(TelegramDialogType)
         dialogs = await self.get_user_dialogs(types)
         for dialog in dialogs:
             if dialog["name"] == channel_name:
@@ -281,7 +281,7 @@ class BSTelegramUserClient:
 
         raise LookupError(f"No dialog found with name '{channel_name}'")
 
-    async def get_user_dialogs(self, entity_types: list[ChannelType]) -> list[dict]:
+    async def get_user_dialogs(self, entity_types: list[TelegramDialogType]) -> list[dict]:
         """
         Devuelve la lista de diálogos del usuario autenticado filtrados por tipo de entidad.
 
@@ -301,7 +301,7 @@ class BSTelegramUserClient:
             RuntimeError: Si el cliente no está conectado o autenticado.
         """
         if not entity_types:
-            entity_types = [ChannelType.CHANNEL, ChannelType.USER, ChannelType.CHAT]
+            entity_types = [TelegramDialogType.CHANNEL, TelegramDialogType.USER, TelegramDialogType.CHAT]
         if not isinstance(entity_types, list):
             raise ValueError("'entity_types' must be a non-empty list of ChannelType values")
 
