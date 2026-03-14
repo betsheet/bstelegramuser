@@ -9,6 +9,7 @@ from telethon import TelegramClient, events
 from telethon.tl.functions.auth import ResendCodeRequest
 from bsutils.logger.bslogger import BSLogger
 from bsutils.apimodels.pick_message import BSTelegramPickMessage
+from util.util import ChannelType
 
 # TODO: recopilar todas las exceptions que tenemos.
 class BSTelegramUserClient:
@@ -241,7 +242,7 @@ class BSTelegramUserClient:
             resolved = chat
         else:
             try:
-                username = await self.get_channel_username_by_name(chat)
+                username = await self.get_dialog_username_by_name(chat)
                 resolved = f"@{username}" if username else chat
             except LookupError:
                 # No encontrado como nombre completo → tratarlo como username
@@ -251,71 +252,96 @@ class BSTelegramUserClient:
         self.logger.info(f"Retrieved {len(messages)} message(s) from '{resolved}'")
         return list(messages)
 
-    async def get_channel_username_by_name(self, channel_name: str) -> Optional[str]:
+    async def get_dialog_username_by_name(self, channel_name: str, entity_types: Optional[list[ChannelType]] = None) -> Optional[str]:
         """
-        Busca un canal por nombre exacto y devuelve su @username.
+        Busca un diálogo por nombre exacto y devuelve su @username.
 
         Args:
-            channel_name: Nombre del canal tal como aparece en Telegram.
+            channel_name: Nombre del diálogo tal como aparece en Telegram.
+            entity_types: Tipos de entidad donde buscar. Si no se indica,
+                          se busca en los tres tipos (CHANNEL, USER, CHAT).
 
         Returns:
-            El @username del canal (sin '@'), o None si el canal es privado
-            y no tiene username público.
+            El @username del diálogo (sin '@'), o None si no tiene username público.
 
         Raises:
             ValueError: Si channel_name está vacío o no es string.
             RuntimeError: Si el cliente no está conectado o autenticado.
-            LookupError: Si no se encuentra ningún canal con ese nombre.
+            LookupError: Si no se encuentra ningún diálogo con ese nombre.
         """
         if not channel_name or not isinstance(channel_name, str):
             raise ValueError("'channel_name' must be a non-empty string")
 
-        channels = await self.get_user_channels()
-        for channel in channels:
-            if channel["name"] == channel_name:
-                self.logger.info(f"Channel '{channel_name}' found with username: {channel['username']}")
-                return channel["username"]
+        types = entity_types if entity_types is not None else list(ChannelType)
+        dialogs = await self.get_user_dialogs(types)
+        for dialog in dialogs:
+            if dialog["name"] == channel_name:
+                self.logger.info(f"Dialog '{channel_name}' found with username: {dialog['username']}")
+                return dialog["username"]
 
-        raise LookupError(f"No channel found with name '{channel_name}'")
+        raise LookupError(f"No dialog found with name '{channel_name}'")
 
-
-    async def get_user_channels(self) -> list[dict]:
+    async def get_user_dialogs(self, entity_types: list[ChannelType]) -> list[dict]:
         """
-        Devuelve la lista de canales y supergrupos a los que pertenece el usuario autenticado.
+        Devuelve la lista de diálogos del usuario autenticado filtrados por tipo de entidad.
+
+        Args:
+            entity_types: Lista de ChannelType que indica qué tipos de entidad incluir.
+                          Valores posibles: ChannelType.CHANNEL, ChannelType.USER, ChannelType.CHAT.
 
         Returns:
             Lista de dicts con las claves:
-              - 'id'       (int)  : identificador interno del canal
-              - 'name'     (str)  : nombre del canal
-              - 'username' (str | None): @username público, o None si es privado
-              - 'type'     (str)  : 'channel' o 'supergroup'
+              - 'id'       (int)        : identificador interno de la entidad
+              - 'name'     (str)        : nombre del chat/canal/usuario
+              - 'username' (str | None) : @username público, o None si no tiene
+              - 'type'     (str)        : 'channel', 'supergroup', 'user', 'bot' o 'group'
 
         Raises:
-            RuntimeError: si el cliente no está conectado o autenticado.
+            ValueError:   Si entity_types está vacío o no es una lista.
+            RuntimeError: Si el cliente no está conectado o autenticado.
         """
+        if not entity_types:
+            entity_types = [ChannelType.CHANNEL, ChannelType.USER, ChannelType.CHAT]
+        if not isinstance(entity_types, list):
+            raise ValueError("'entity_types' must be a non-empty list of ChannelType values")
+
         self._ensure_client_ready()
 
         if not await self.is_authenticated():
-            raise RuntimeError("Cannot get channels: client not authenticated")
+            raise RuntimeError("Cannot get dialogs: client not authenticated")
 
-        channels = []
+        requested_types = {ct.value for ct in entity_types}
+        dialogs = []
+
         async for dialog in self.client.iter_dialogs():
             entity = dialog.entity
             entity_type = type(entity).__name__
 
-            # Channel: canales de difusión y supergrupos
-            if entity_type == "Channel":
-                kind = "supergroup" if getattr(entity, "megagroup", False) else "channel"
-                # TODO: entidad Channel
-                channels.append({
-                    "id": entity.id,
-                    "name": dialog.name,
-                    "username": getattr(entity, "username", None),
-                    "type": kind,
-                })
+            if entity_type not in requested_types:
+                continue
 
-        self.logger.info(f"Found {len(channels)} channels for the authenticated user")
-        return channels
+            if entity_type == "Channel":
+                if getattr(entity, "gigagroup", False):
+                    kind = "gigagroup"
+                elif getattr(entity, "megagroup", False):
+                    kind = "supergroup"
+                else:
+                    kind = "channel"
+            elif entity_type == "User":
+                kind = "bot" if getattr(entity, "bot", False) else "user"
+            else:  # Chat
+                kind = "group"
+
+            dialogs.append({
+                "id": entity.id,
+                "name": dialog.name,
+                "username": getattr(entity, "username", None),
+                "type": kind,
+            })
+
+        self.logger.info(f"Found {len(dialogs)} dialog(s) for types {[ct.value for ct in entity_types]}")
+        return dialogs
+
 
     def _add_listener(self, listen_from: str, on_message: Optional[Callable[[str, str], None]] = print) -> None:
         @self.client.on(events.NewMessage(from_users=listen_from.lstrip("@")))
