@@ -2,7 +2,8 @@ import asyncio
 import os
 from datetime import datetime, timezone
 from http import HTTPStatus
-from typing import Optional, Callable
+from collections.abc import Awaitable, Callable
+from typing import Optional
 
 import requests
 import requests.exceptions
@@ -324,7 +325,7 @@ class BSTelegramUserClient:
             self._add_listener(channel, self._process_message_from_channel)
             self.logger.info(f"Listening messages from '{channel}'")
 
-    def _add_listener(self, listen_from: str, on_message: Callable[[str, str], None]) -> None:
+    def _add_listener(self, listen_from: str, on_message: Callable[[str, str], Awaitable[None]]) -> None:
         @self.client.on(events.NewMessage(from_users=listen_from.lstrip("@")))
         async def _handler(event):
             try:
