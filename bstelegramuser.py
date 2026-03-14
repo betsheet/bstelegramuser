@@ -1,36 +1,20 @@
+import asyncio
 import os
+from datetime import datetime, timezone
 from http import HTTPStatus
 from typing import Optional, Callable
-from datetime import datetime, timezone
-import requests.exceptions
-from bsutils.telegram.util import TelegramDialogType
-from requests import Response
+
 import requests
+import requests.exceptions
 from telethon import TelegramClient, events
 from telethon.tl.functions.auth import ResendCodeRequest
-from bsutils.logger.bslogger import BSLogger
+
 from bsutils.apimodels.pick_message import BSTelegramPickMessage
+from bsutils.logger.bslogger import BSLogger
+from bsutils.telegram.util import TelegramDialogType
 
-# TODO: recopilar todas las exceptions que tenemos.
 class BSTelegramUserClient:
-    # Telegram data
-    client: Optional[TelegramClient]
-    app_api_id: int
-    app_api_hash: str
-    telegram_user_id: Optional[str]
-    phone_number: str
-    session_file_path: str
 
-    # Messages
-    channels_to_listen_from: list[str]
-    process_messages_endpoint: str
-
-    # Auth state
-    _phone_code_hash: Optional[str]
-
-    # Logger
-    logger: Optional[BSLogger]
-    
     def __init__(self, api_id: int, api_hash: str, phone_number: str, session_file_path: str, logger: BSLogger, process_messages_endpoint: str) -> None:
         self._validate_init_params(api_id, api_hash, phone_number, process_messages_endpoint)
         self.app_api_hash = api_hash
@@ -147,13 +131,13 @@ class BSTelegramUserClient:
         if not await self.is_authenticated():
             raise RuntimeError("Cannot get user ID: client not authenticated")
 
-        if not self.telegram_user_id:
-            me = await self.client.get_me()
-            self.telegram_user_id = str(me.id)
-            self._ensure_client_ready()
-            self.logger.info(f"User ID set: {self.telegram_user_id}")
+        if self.telegram_user_id:
+            self.logger.info(f"User ID is already set: {self.telegram_user_id}")
+            return
 
-        self.logger.info(f"User ID is already set: {self.telegram_user_id}")
+        me = await self.client.get_me()
+        self.telegram_user_id = str(me.id)
+        self.logger.info(f"User ID set: {self.telegram_user_id}")
 
     # Listening channels management
     async def start_listening_channels(self) -> None:
@@ -162,21 +146,13 @@ class BSTelegramUserClient:
         if not self.channels_to_listen_from:
             raise ValueError("No channels configured to listen from. Use add_channel_to_listen() first.")
 
-        if not self.client or not self.client.is_connected():
-            raise RuntimeError("Client not connected. Call connect_client() first.")
-
         if not await self.is_authenticated():
             raise RuntimeError("Client not authenticated. Complete authentication flow first.")
 
         await self._set_telegram_user_id()
+        self._register_channel_listeners()
         self.logger.info(f"User '{self.telegram_user_id}' started listening")
 
-        # Configurar listeners para cada canal
-        for channel in self.channels_to_listen_from:
-            self._add_listener(channel, self._process_message_from_channel)
-            self.logger.info(f"Listening messages from '{channel}'")
-
-        # Mantener conexión activa
         await self.client.run_until_disconnected()
 
     def add_channel_to_listen(self, channel_username: str) -> bool:
@@ -342,63 +318,43 @@ class BSTelegramUserClient:
         self.logger.info(f"Found {len(dialogs)} dialog(s) for types {[ct.value for ct in entity_types]}")
         return dialogs
 
+    def _register_channel_listeners(self) -> None:
+        """Registra listeners para todos los canales configurados."""
+        for channel in self.channels_to_listen_from:
+            self._add_listener(channel, self._process_message_from_channel)
+            self.logger.info(f"Listening messages from '{channel}'")
 
-    def _add_listener(self, listen_from: str, on_message: Optional[Callable[[str, str], None]] = print) -> None:
+    def _add_listener(self, listen_from: str, on_message: Callable[[str, str], None]) -> None:
         @self.client.on(events.NewMessage(from_users=listen_from.lstrip("@")))
         async def _handler(event):
             try:
-                # Intentar obtener el texto del mensaje
-                message_text = ""
-                if hasattr(event, 'text') and event.text:
-                    message_text = event.text
-                elif hasattr(event, 'message') and hasattr(event.message, 'message'):
-                    message_text = event.message.message
-
-                # Intentar obtener el ID del mensaje de múltiples formas
-                message_id = None
-
-                # Opción 1: Directamente desde event.message.id
-                if hasattr(event, 'message') and hasattr(event.message, 'id'):
-                    message_id = str(event.message.id)
-                # Opción 2: Desde event.original_update.message.id (si message es objeto)
-                elif (hasattr(event, 'original_update') and
-                      hasattr(event.original_update, 'message') and
-                      not isinstance(event.original_update.message, str) and
-                      hasattr(event.original_update.message, 'id')):
-                    message_id = str(event.original_update.message.id)
-                # Opción 3: Desde event.id como fallback
-                elif hasattr(event, 'id'):
-                    message_id = str(event.id)
-                else:
-                    message_id = "unknown"
-
-                on_message(message_text, message_id)
-
+                message_text = event.message.message or ""
+                message_id = str(event.message.id)
+                await on_message(message_text, message_id)
             except Exception as e:
                 self.logger.error(f"Error processing message from '{listen_from}': {str(e)}")
 
-    def _process_message_from_channel(self, message_html: str, telegram_message_id: str):
-        # Obtener timestamp actual en formato dd/mm/yyyy hh:mm:ss
+    async def _process_message_from_channel(self, message_html: str, telegram_message_id: str) -> None:
         timestamp = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M:%S")
 
-        payload: BSTelegramPickMessage = BSTelegramPickMessage(
+        payload = BSTelegramPickMessage(
             from_user_id=self.telegram_user_id,
             from_telegram_chat_id="",
             content=message_html,
             timestamp=timestamp
         )
-        payload_json: dict = payload.model_dump(by_alias=True, mode='json')
+        payload_json = payload.model_dump(by_alias=True, mode='json')
 
         try:
-            response: Response = requests.post(
+            response = await asyncio.to_thread(
+                requests.post,
                 url=self.process_messages_endpoint,
                 json=payload_json,
-                timeout=30
+                timeout=30,
             )
 
             if response.status_code == HTTPStatus.OK:
                 self.logger.info(f"Message with id '{telegram_message_id}' successfully processed.")
-
             else:
                 self.logger.error(f"Failed to process message '{telegram_message_id}'. "
                                   f"Status: {response.status_code}, Response: {response.text}")
@@ -409,8 +365,6 @@ class BSTelegramUserClient:
             self.logger.error(f"Connection error processing message '{telegram_message_id}'")
         except requests.exceptions.RequestException as e:
             self.logger.error(f"Request error processing message '{telegram_message_id}': {str(e)}")
-        except Exception as e:
-            self.logger.error(f"Unexpected error processing message '{telegram_message_id}': {str(e)}")
 
     async def disconnect_client(self) -> None:
         if self.client and self.client.is_connected():
@@ -430,16 +384,11 @@ class BSTelegramUserClient:
             raise ValueError("No channels configured to listen from. Use add_channel_to_listen() first.")
 
         await self._interactive_start()
-        self.logger.info(f"User '{self.telegram_user_id}' started listening.")
-        for c in self.channels_to_listen_from:
-            self._add_listener(c, self._process_message_from_channel)
-            self.logger.info(f"Listening messages from '{c}'")
+        self._register_channel_listeners()
+        self.logger.info(f"User '{self.telegram_user_id}' started listening")
         await self.client.run_until_disconnected()
 
-
-
-
-
+    # Context managers
     def __enter__(self):
         """
         Prevent usage of sync context manager.
