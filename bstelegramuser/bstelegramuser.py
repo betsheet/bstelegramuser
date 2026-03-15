@@ -25,7 +25,7 @@ class TelegramDialog(BaseModel):
     id: int
     name: str
     username: Optional[str] = None
-    access_hash: Optional[int] = None     # necesario para referenciar diálogos sin username
+    access_hash: Optional[int] = None     # int64 con signo (puede ser negativo); necesario para referenciar diálogos sin username
     dialog_type: TelegramDialogType
     # ── Subtipo dentro de TelegramDialogType ──────────────────────────
     # 'channel' | 'supergroup' | 'gigagroup' | 'user' | 'bot' | 'group'
@@ -113,6 +113,9 @@ class TelegramDialog(BaseModel):
             unread_mentions_count=getattr(raw, "unread_mentions_count", 0) or 0,
             pinned=bool(getattr(raw, "pinned", False)),
         )
+
+
+
 class BSTelegramUserClient(
     InteractiveMixin,
     ChannelsListeningMixin,
