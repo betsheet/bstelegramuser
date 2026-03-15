@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Awaitable, Callable
 
 if TYPE_CHECKING:
     from telethon import TelegramClient
@@ -8,12 +8,16 @@ if TYPE_CHECKING:
 
 
 class ChannelsListeningMixin:
+    """Mixin for listening channels management."""
+
     # Attributes provided by BSTelegramUserClient.__init__; declared here for type-checker only
     client: TelegramClient
     logger: BSLogger
     telegram_user_id: str | None
     channels_to_listen_from: list[str]
-    """Mixin for listening channels management."""
+
+    # Method provided by DiscoveryMixin via MRO
+    _resolve_channel_identifier: Callable[..., Awaitable[str]]
 
     async def start_listening_channels(self) -> None:
         self._ensure_client_ready()
@@ -30,15 +34,28 @@ class ChannelsListeningMixin:
 
         await self.client.run_until_disconnected()
 
-    def add_channel_to_listen(self, channel_username: str) -> bool:
-        if not channel_username or not isinstance(channel_username, str):
-            raise ValueError("Channel username must be a non-empty string")
-        normalized_channel = channel_username.strip()
-        if normalized_channel not in self.channels_to_listen_from:
-            self.channels_to_listen_from.append(normalized_channel)
+    async def add_channel_to_listen(self, channel: str) -> bool:
+        """
+        Añade un canal a la lista de escucha.
+
+        Acepta indistintamente:
+          - ``"@username"`` o ``"username"`` → se usa directamente.
+          - ``"Nombre completo"`` → se resuelve a su @username via Telegram.
+
+        Args:
+            channel: @username, username sin '@', o nombre completo del canal.
+
+        Returns:
+            True si el canal se añadió, False si ya estaba en la lista.
+        """
+        if not channel or not isinstance(channel, str):
+            raise ValueError("Channel must be a non-empty string")
+        resolved = await self._resolve_channel_identifier(channel.strip())
+        if resolved not in self.channels_to_listen_from:
+            self.channels_to_listen_from.append(resolved)
             return True
         else:
-            self.logger.warning(f"Channel '{normalized_channel}' already added")
+            self.logger.warning(f"Channel '{resolved}' already added")
             return False
 
     def remove_channel_to_listen(self, channel_username: str) -> bool:

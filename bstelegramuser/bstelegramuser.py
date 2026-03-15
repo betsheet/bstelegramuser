@@ -25,6 +25,7 @@ class TelegramDialog(BaseModel):
     id: int
     name: str
     username: Optional[str] = None
+    access_hash: Optional[int] = None     # necesario para referenciar diálogos sin username
     dialog_type: TelegramDialogType
     # ── Subtipo dentro de TelegramDialogType ──────────────────────────
     # 'channel' | 'supergroup' | 'gigagroup' | 'user' | 'bot' | 'group'
@@ -89,6 +90,7 @@ class TelegramDialog(BaseModel):
             id=entity.id,
             name=dialog.name,
             username=username,
+            access_hash=getattr(entity, "access_hash", None),
             dialog_type=dialog_type,
             kind=kind,
             extra_usernames=extra_usernames,
