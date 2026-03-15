@@ -309,10 +309,22 @@ class BSTelegramUserClient:
             else:  # Chat
                 kind = "group"
 
+            # Telethon ≥ 1.28 puede exponer los usernames como lista en `entity.usernames`
+            # (objetos Username con atributo .username). El atributo simple `username`
+            # puede ser None aunque el canal sí tenga username público.
+            username = getattr(entity, "username", None)
+            if not username:
+                raw_usernames = getattr(entity, "usernames", None) or []
+                for u in raw_usernames:
+                    candidate = getattr(u, "username", None)
+                    if candidate:
+                        username = candidate
+                        break
+
             dialogs.append({
                 "id": entity.id,
                 "name": dialog.name,
-                "username": getattr(entity, "username", None),
+                "username": username,
                 "type": kind,
             })
 
