@@ -258,7 +258,7 @@ class BSTelegramUserClient:
 
         raise LookupError(f"No dialog found with name '{channel_name}'")
 
-    async def get_user_dialogs(self, entity_types: list[TelegramDialogType]) -> list[dict]:
+    async def get_user_dialogs(self, entity_types: Optional[list[TelegramDialogType]]) -> list[dict]:
         """
         Devuelve la lista de diálogos del usuario autenticado filtrados por tipo de entidad.
 
