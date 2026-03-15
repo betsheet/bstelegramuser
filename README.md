@@ -198,9 +198,9 @@ username = await client.get_dialog_username_by_name("My Private Channel")
 ### Retrieve the last N messages
 
 ```python
-messages = await client.get_last_n_messages("@my_channel", n=10)
+messages = await client.get_messages_from_dialog("@my_channel", n=10)
 for msg in messages:
-    print(msg.id, msg.message)
+  print(msg.id, msg.message)
 ```
 
 The `chat` parameter accepts:

@@ -177,7 +177,7 @@ class BSTelegramUserClient:
         return self.channels_to_listen_from.copy()
 
     # Channel discovery
-    async def get_last_n_messages(self, chat: str, n: int) -> list:
+    async def get_messages_from_dialog(self, chat: str, n: int) -> list:
         """
         Devuelve los «n» últimos mensajes de un canal o chat.
 
@@ -322,7 +322,7 @@ class BSTelegramUserClient:
     def _register_channel_listeners(self) -> None:
         """Registra listeners para todos los canales configurados."""
         for channel in self.channels_to_listen_from:
-            self._add_listener(channel, self._process_message_from_channel)
+            self._add_listener(channel, self._process_message_from_dialog)
             self.logger.info(f"Listening messages from '{channel}'")
 
     def _add_listener(self, listen_from: str, on_message: Callable[[str, str], Awaitable[None]]) -> None:
@@ -335,7 +335,7 @@ class BSTelegramUserClient:
             except Exception as e:
                 self.logger.error(f"Error processing message from '{listen_from}': {str(e)}")
 
-    async def _process_message_from_channel(self, message_html: str, telegram_message_id: str) -> None:
+    async def _process_message_from_dialog(self, message_html: str, telegram_message_id: str) -> None:
         timestamp = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M:%S")
 
         payload = BSTelegramPickMessage(
