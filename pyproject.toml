@@ -49,10 +49,8 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["bstelegramuser*"]
+include = ["bstelegramuser", "bstelegramuser.*"]
 
-[tool.setuptools]
-py-modules = ["bstelegramuser"]
 
 [tool.black]
 line-length = 88
