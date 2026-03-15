@@ -7,13 +7,15 @@ from bsutils.telegram.util import TelegramDialogType
 if TYPE_CHECKING:
     from telethon import TelegramClient
     from bsutils.logger.bslogger import BSLogger
+    from bstelegramuser.bstelegramuser import TelegramDialog
 
 
 class DiscoveryMixin:
+    """Mixin for channel and dialog discovery."""
+
     # Attributes provided by BSTelegramUserClient.__init__; declared here for type-checker only
     client: TelegramClient
     logger: BSLogger
-    """Mixin for channel and dialog discovery."""
 
     async def get_messages_from_dialog(self, chat: str, n: int) -> list:
         """
@@ -90,38 +92,35 @@ class DiscoveryMixin:
         types = entity_types if entity_types is not None else list(TelegramDialogType)
         dialogs = await self.get_user_dialogs(types)
         for dialog in dialogs:
-            if dialog["name"] == channel_name:
-                self.logger.info(f"Dialog '{channel_name}' found with username: {dialog['username']}")
-                return dialog["username"]
+            if dialog.name == channel_name:
+                self.logger.info(f"Dialog '{channel_name}' found with username: {dialog.username}")
+                return dialog.username
 
         raise LookupError(f"No dialog found with name '{channel_name}'")
 
-    async def get_user_dialogs(self, entity_types: Optional[list[TelegramDialogType]]) -> list[dict]:
+    async def get_user_dialogs(self, entity_types: Optional[list[TelegramDialogType]] = None) -> list[TelegramDialog]:
         """
         Devuelve la lista de diálogos del usuario autenticado filtrados por tipo de entidad.
 
         Args:
-            entity_types: Lista de ChannelType que indica qué tipos de entidad incluir.
-                          Valores posibles: ChannelType.CHANNEL, ChannelType.USER, ChannelType.CHAT.
+            entity_types: Lista de TelegramDialogType que indica qué tipos de entidad incluir.
+                          Si no se indica, se devuelven todos los tipos.
 
         Returns:
-            Lista de dicts con las claves:
-              - 'id'       (int)        : identificador interno de la entidad
-              - 'name'     (str)        : nombre del chat/canal/usuario
-              - 'username' (str | None) : @username público, o None si no tiene
-              - 'type'     (str)        : 'channel', 'supergroup', 'user', 'bot' o 'group'
+            Lista de TelegramDialog ordenada por el orden que devuelve Telegram.
 
         Raises:
-            ValueError:   Si entity_types está vacío o no es una lista.
+            ValueError:   Si entity_types no es una lista.
             RuntimeError: Si el cliente no está conectado o autenticado.
         """
-        if not entity_types:
-            entity_types = [TelegramDialogType.CHANNEL, TelegramDialogType.USER, TelegramDialogType.CHAT]
+        from bstelegramuser.bstelegramuser import TelegramDialog
+
+        if entity_types is None:
+            entity_types = list(TelegramDialogType)
         if not isinstance(entity_types, list):
-            raise ValueError("'entity_types' must be a non-empty list of ChannelType values")
+            raise ValueError("'entity_types' must be a list of TelegramDialogType values")
 
         self._ensure_client_ready()
-
         if not await self.is_authenticated():
             raise RuntimeError("Cannot get dialogs: client not authenticated")
 
@@ -129,42 +128,10 @@ class DiscoveryMixin:
         dialogs = []
 
         async for dialog in self.client.iter_dialogs():
-            entity = dialog.entity
-            entity_type = type(entity).__name__
-
+            entity_type = type(dialog.entity).__name__
             if entity_type not in requested_types:
                 continue
-
-            if entity_type == "Channel":
-                if getattr(entity, "gigagroup", False):
-                    kind = "gigagroup"
-                elif getattr(entity, "megagroup", False):
-                    kind = "supergroup"
-                else:
-                    kind = "channel"
-            elif entity_type == "User":
-                kind = "bot" if getattr(entity, "bot", False) else "user"
-            else:  # Chat
-                kind = "group"
-
-            # Telethon ≥ 1.28 puede exponer los usernames como lista en `entity.usernames`
-            # (objetos Username con atributo .username). El atributo simple `username`
-            # puede ser None aunque el canal sí tenga username público.
-            username = getattr(entity, "username", None)
-            if not username:
-                raw_usernames = getattr(entity, "usernames", None) or []
-                for u in raw_usernames:
-                    candidate = getattr(u, "username", None)
-                    if candidate:
-                        username = candidate
-                        break
-
-            dialogs.append({
-                "id": entity.id,
-                "name": dialog.name,
-                "username": username,
-                "type": kind,
-            })
+            dialogs.append(TelegramDialog.from_telethon(dialog))
 
         self.logger.info(f"Found {len(dialogs)} dialog(s) for types {[ct.value for ct in entity_types]}")
         return dialogs

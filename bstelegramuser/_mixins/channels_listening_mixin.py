@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from bsutils.logger.bslogger import BSLogger
 
 
-class ChannelsMixin:
+class ChannelsListeningMixin:
     # Attributes provided by BSTelegramUserClient.__init__; declared here for type-checker only
     client: TelegramClient
     logger: BSLogger
