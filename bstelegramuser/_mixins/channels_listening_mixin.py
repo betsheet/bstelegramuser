@@ -34,6 +34,7 @@ class ChannelsListeningMixin:
 
         await self.client.run_until_disconnected()
 
+    # TODO: tenemos que comprobar aquí que el channel indicado se corresponde con un dialog real del usuario
     async def add_channel_to_listen(self, channel: str) -> bool:
         """
         Añade un canal a la lista de escucha.
