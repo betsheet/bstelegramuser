@@ -32,13 +32,13 @@ class ProcessingMixin:
             self._add_listener(channel, self._process_message_from_dialog)
             self.logger.info(f"Listening messages from '{channel}'")
 
-    def _add_listener(self, listen_from: str, on_message: Callable[[str, str, str], Awaitable[None]]) -> None:
+    def _add_listener(self, listen_from: str, on_message: Callable[[str, str, str, str], Awaitable[None]]) -> None:
         """Attach a Telethon NewMessage handler that forwards incoming messages to *on_message*.
 
         Args:
             listen_from: Telegram username or channel identifier to listen from.
             on_message: Async callback that receives the message text, the
-                message ID, and the source chat ID (all as strings).
+                message ID, the source chat ID, and the source chat name (all as strings).
         """
         @self.client.on(events.NewMessage(from_users=listen_from.lstrip("@")))
         async def _handler(event):
@@ -46,23 +46,26 @@ class ProcessingMixin:
                 message_text = event.message.message or ""
                 message_id = str(event.message.id)
                 chat_id = str(event.chat_id)
-                await on_message(message_text, message_id, chat_id)
+                chat = event.chat
+                chat_name = getattr(chat, "username", None) or getattr(chat, "title", None) or listen_from
+                await on_message(message_text, message_id, chat_id, chat_name)
             except Exception as e:
                 self.logger.error(f"Error processing message from '{listen_from}': {str(e)}")
 
-    # TODO: necesitamos más campos, más metadata del mensaje
-    async def _process_message_from_dialog(self, message_html: str, telegram_message_id: str, from_telegram_chat_id: str) -> None:
+    async def _process_message_from_dialog(self, message_html: str, telegram_message_id: str, from_telegram_chat_id: str, from_telegram_chat_name: str) -> None:
         """Build a ``BSTelegramMessage`` from the raw event data and POST it to the processing API.
 
         Args:
             message_html: Plain-text (or HTML) content of the incoming Telegram message.
             telegram_message_id: Unique Telegram identifier of the message.
             from_telegram_chat_id: Telegram chat/channel ID where the message originated.
+            from_telegram_chat_name: Username or display name of the source chat/channel.
         """
         payload = BSTelegramMessage(
             telegram_message_id=telegram_message_id,
             from_user_id=self.telegram_user_id,
             from_telegram_chat_id=from_telegram_chat_id,
+            from_telegram_chat_name=from_telegram_chat_name,
             content=message_html,
             timestamp=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M:%S")
         )
