@@ -41,6 +41,37 @@ class DiscoveryMixin:
         except LookupError:
             return channel
 
+    async def iter_messages_from_dialog(self, chat: str):
+        """
+        Async generator that yields messages from `chat`, newest-first.
+
+        Telethon fetches messages lazily in internal batches of 100 per API
+        call.  The caller controls how far to consume the generator; pages
+        that are never reached are never fetched.
+
+        Args:
+            chat: @username, username without '@', or full dialog name.
+
+        Yields:
+            Raw Telethon Message objects, ordered newest → oldest.
+
+        Raises:
+            ValueError:   If ``chat`` is empty/invalid.
+            RuntimeError: If the client is not authenticated.
+            LookupError:  If the channel cannot be resolved.
+        """
+        if not chat or not isinstance(chat, str):
+            raise ValueError("'chat' must be a non-empty string")
+
+        self._ensure_client_ready()
+        if not await self.is_authenticated():
+            raise RuntimeError("Cannot iterate messages: client not authenticated")
+
+        resolved = await self._resolve_channel_identifier(chat)
+        self.logger.info(f"Iterating messages from '{resolved}'")
+        async for msg in self.client.iter_messages(resolved):
+            yield msg
+
     async def get_messages_from_dialog(self, chat: str, n: int) -> list:
         # ...existing code...
         if not chat or not isinstance(chat, str):
