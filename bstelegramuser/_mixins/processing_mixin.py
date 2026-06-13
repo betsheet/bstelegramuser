@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Any
 import requests
 import requests.exceptions
 
-from bsutils.apimodels.pick_message import BSTelegramMessage
 from telethon import events
 
 if TYPE_CHECKING:
@@ -61,7 +60,7 @@ class ProcessingMixin:
             from_telegram_chat_id: Telegram chat/channel ID where the message originated.
             from_telegram_chat_name: Username or display name of the source chat/channel.
         """
-        payload = BSTelegramMessage(
+        payload = TelegramMessage(
             telegram_message_id=telegram_message_id,
             from_user_id=self.telegram_user_id,
             from_telegram_chat_id=from_telegram_chat_id,

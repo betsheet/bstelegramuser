@@ -11,30 +11,13 @@ authors = [
     {name = "BetSheet", email = "betsheet@protonmail.com"}
 ]
 keywords = ["telegram", "client", "api", "betsheet"]
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Topic :: Communications :: Chat",
-    "Topic :: Software Development :: Libraries :: Python Modules",
-]
 
 dependencies = [
     "requests>=2.31.0",
     "telethon>=1.34.0",
     "bsutils @ git+https://github.com/betsheet/bsutils.git",
+    "bs-api-models @ git+ssh://git@github.com/betsheet/bs-api-models.git",
 ]
-
-[project.urls]
-Homepage = "https://github.com/betsheet/bstelegramuser"
-Repository = "https://github.com/betsheet/bstelegramuser"
-Issues = "https://github.com/betsheet/bstelegramuser/issues"
 
 [project.optional-dependencies]
 dev = [
@@ -72,6 +55,3 @@ disallow_untyped_defs = true
 asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = "-m 'not integration'"
-markers = [
-    "integration: tests de integración real con Telegram (requieren credenciales y conexión)"
-]
