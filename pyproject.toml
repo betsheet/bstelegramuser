@@ -13,10 +13,10 @@ authors = [
 keywords = ["telegram", "client", "api", "betsheet"]
 
 dependencies = [
+    "pydantic",
     "requests>=2.31.0",
     "telethon>=1.34.0",
     "bsutils @ git+https://github.com/betsheet/bsutils.git",
-    "bs-api-models @ git+ssh://git@github.com/betsheet/bs-api-models.git",
 ]
 
 [project.optional-dependencies]

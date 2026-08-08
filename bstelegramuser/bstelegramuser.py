@@ -13,7 +13,6 @@ from ._mixins import (
     ValidationMixin,
 )
 
-# TODO: a lo mejor podría heredar de nuestro Base
 class TelegramDialog(BaseModel):
     """
     Representación normalizada de un diálogo de Telegram.
@@ -148,3 +147,4 @@ class BSTelegramUserClient(
         self.logger = logger
         self.channels_to_listen_from = []
         self._phone_code_hash = None
+

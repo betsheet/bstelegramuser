@@ -88,6 +88,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "bsutils" },
+    { name = "pydantic" },
     { name = "requests" },
     { name = "telethon" },
 ]
@@ -110,6 +111,7 @@ requires-dist = [
     { name = "bsutils", marker = "extra == 'dev'", git = "https://github.com/betsheet/bsutils.git" },
     { name = "flake8", marker = "extra == 'dev'", specifier = ">=4.0.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
+    { name = "pydantic" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.0" },
     { name = "python-dotenv", marker = "extra == 'dev'", specifier = ">=1.0.0" },
