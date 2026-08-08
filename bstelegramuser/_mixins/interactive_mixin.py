@@ -34,9 +34,9 @@ class InteractiveMixin:
             raise ValueError("No channels configured to listen from. Use add_channel_to_listen() first.")
 
         await self._interactive_start()
-        self._register_channel_listeners()
+        self._register_channel_listeners()  # type: ignore[attr-defined]
         self.logger.info(f"User '{self.telegram_user_id}' started listening")
-        await self.client.run_until_disconnected()
+        await self.client.run_until_disconnected()  # type: ignore[misc]
 
     def __enter__(self):
         """

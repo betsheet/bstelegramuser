@@ -7,7 +7,7 @@ from bsutils.telegram.util import TelegramDialogType
 if TYPE_CHECKING:
     from telethon import TelegramClient
     from bsutils.logger.bslogger import BSLogger
-    from bstelegramuser.bstelegramuser import TelegramDialog
+    from bs_api_models import TelegramDialog
 
 
 class DiscoveryMixin:
@@ -132,7 +132,7 @@ class DiscoveryMixin:
             ValueError:   Si entity_types no es una lista.
             RuntimeError: Si el cliente no está conectado o autenticado.
         """
-        from bstelegramuser.bstelegramuser import TelegramDialog
+        from bstelegramuser.bstelegramuser import telegram_dialog_from_telethon
 
         if entity_types is None:
             entity_types = list(TelegramDialogType)
@@ -150,7 +150,7 @@ class DiscoveryMixin:
             entity_type = type(dialog.entity).__name__
             if entity_type not in requested_types:
                 continue
-            dialogs.append(TelegramDialog.from_telethon(dialog))
+            dialogs.append(telegram_dialog_from_telethon(dialog))
 
         self.logger.info(f"Found {len(dialogs)} dialog(s) for types {[ct.value for ct in entity_types]}")
         return dialogs
