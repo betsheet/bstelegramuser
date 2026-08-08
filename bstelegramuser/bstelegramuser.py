@@ -13,6 +13,7 @@ from ._mixins import (
     ValidationMixin,
 )
 
+# TODO: levar a api-models y sacar de aquí
 class TelegramDialog(BaseModel):
     """
     Representación normalizada de un diálogo de Telegram.

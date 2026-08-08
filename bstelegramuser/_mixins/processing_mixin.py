@@ -4,23 +4,22 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from http import HTTPStatus
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import requests
 import requests.exceptions
 
 from telethon import events
 
-if TYPE_CHECKING:
-    from telethon import TelegramClient
-    from bsutils.logger.bslogger import BSLogger
-
+from telethon import TelegramClient
+from bs_api_models import TelegramMessage
+from bsutils.logger.bslogger import BSLogger
 
 class ProcessingMixin:
     # Attributes provided by BSTelegramUserClient.__init__; declared here for type-checker only
     client: TelegramClient
     logger: BSLogger
-    telegram_user_id: str | None
+    telegram_user_id: int
     process_messages_endpoint: str
     channels_to_listen_from: list[str]
     """Mixin for message listening and processing logic."""
@@ -62,11 +61,11 @@ class ProcessingMixin:
         """
         payload = TelegramMessage(
             telegram_message_id=telegram_message_id,
-            from_user_id=self.telegram_user_id,
-            from_telegram_chat_id=from_telegram_chat_id,
+            telegram_user_id=self.telegram_user_id,
+            #from_telegram_chat_id=from_telegram_chat_id,
             from_telegram_chat_name=from_telegram_chat_name,
             content=message_html,
-            timestamp=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M:%S")
+            timestamp=datetime.now(timezone.utc)
         )
         await self._send_message_pick_to_processing_endpoint(payload.model_dump(by_alias=True, mode='json'))
 
