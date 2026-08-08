@@ -16,8 +16,8 @@ dependencies = [
     "pydantic",
     "requests>=2.31.0",
     "telethon>=1.34.0",
-    "bsutils @ git+https://github.com/betsheet/bsutils.git",
-    "bs-api-models @ git+https://github.com/betsheet/bs-api-models.git",
+    "bsutils @ git+ssh://git@github.com/betsheet/bsutils.git",
+    "bs-api-models @ git+ssh://git@github.com/betsheet/bs-api-models.git",
 ]
 
 [project.optional-dependencies]
@@ -28,7 +28,7 @@ dev = [
     "black>=22.0.0",
     "flake8>=4.0.0",
     "mypy>=1.0.0",
-    "bsutils @ git+https://github.com/betsheet/bsutils.git"
+    "bsutils @ git+ssh://git@github.com/betsheet/bsutils.git"
 ]
 
 [tool.setuptools.packages.find]
